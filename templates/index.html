@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Repository Comparison</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/wunderbaum@0.13.0/dist/wunderbaum.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Style overrides for Wunderbaum dark theme */
+        .wunderbaum-container {
+            background-color: transparent;
+            color: #cbd5e1; /* slate-300 */
+        }
+        .wunderbaum-node span.wunderbaum-title {
+            color: #cbd5e1; /* slate-300 */
+        }
+        .wunderbaum-node.wunderbaum-active span.wunderbaum-title,
+        .wunderbaum-node.wunderbaum-focused span.wunderbaum-title {
+            background-color: #334155; /* slate-700 */
+        }
+        .wunderbaum-node:hover span.wunderbaum-title {
+            background-color: #475569; /* slate-600 */
+        }
+        .wunderbaum-node span.wunderbaum-icon {
+            color: #94a3b8; /* slate-400 */
+        }
+
+        /* Responsive container for comparison */
+        .comparison-container {
+          width: 100%;
+          max-width: 100%;
+          margin: 0 auto;
+          padding-left: 1rem;
+          padding-right: 1rem;
+        }
+
+        /* Breakpoints */
+        @media (min-width: 768px) {
+          .comparison-container {
+            max-width: 90%;
+          }
+        }
+
+        @media (min-width: 1200px) {
+          .comparison-container {
+            max-width: 95%;
+          }
+          .panel {
+            flex: 1 1 0;
+          }
+        }
+
+        @media (min-width: 1920px) {
+          .comparison-container {
+            max-width: 98%; /* almost edge-to-edge */
+          }
+          .panel {
+            flex: 1 1 0;
+          }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200">
+
+    <div class="flex flex-col min-h-screen gap-6 p-8 comparison-container">
+
+        <h1 class="flex-shrink-0 text-4xl font-bold text-center text-white">
+            <a href="https://github.com/TandoorRecipes/recipes" target="_blank" class="hover:underline">
+                Repository Comparison
+            </a>
+        </h1>
+
+        <form id="date-form" class="flex items-center justify-center flex-shrink-0 gap-6 p-2 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
+            <label for="date-left" class="text-base font-medium text-slate-300">Date A:</label>
+            <input type="date" id="date-left" value="2019-01-01" class="rounded-md border-slate-600 bg-slate-700 text-slate-200"/>
+            <label for="date-right" class="text-base font-medium text-slate-300">Date B:</label>
+            <input type="date" id="date-right" value="2020-01-01" class="rounded-md border-slate-600 bg-slate-700 text-slate-200"/>
+            <button type="submit" class="px-5 py-2 text-base font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700">Compare</button>
+        </form>
+
+        <div class="flex flex-wrap justify-center flex-grow gap-8">
+            
+            <!-- Left Tree Panel -->
+            <div class="flex flex-col border shadow-lg bg-slate-800 border-slate-700 rounded-xl panel">
+                <div id="meta-left" class="flex-shrink-0 p-4 border-b bg-slate-900/50 border-slate-700 rounded-t-xl">
+                    <!-- Metadata will be injected here by JavaScript -->
+                </div>
+                <div id="tree-left" class="h-[65vh] overflow-y-auto p-2"></div>
+            </div>
+
+            <!-- Right Tree Panel -->
+            <div class="flex flex-col border shadow-lg bg-slate-800 border-slate-700 rounded-xl panel">
+                <div id="meta-right" class="flex-shrink-0 p-4 border-b bg-slate-900/50 border-slate-700 rounded-t-xl">
+                    <!-- Metadata will be injected here by JavaScript -->
+                </div>
+                <div id="tree-right" class="h-[65vh] overflow-y-auto p-2"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/wunderbaum@0.13.0/dist/wunderbaum.umd.min.js"></script>
+    <script>
+      const form = document.getElementById("date-form");
+      const leftDateInput = document.getElementById("date-left");
+      const rightDateInput = document.getElementById("date-right");
+
+      let treeLeftInstance = null;
+      let treeRightInstance = null;
+
+      async function updateTree(side, dateString) {
+        const [year, month] = dateString.split("-");
+        const metaElem = document.getElementById(`meta-${side}`);
+        const treeElemSelector = `#tree-${side}`;
+
+        metaElem.innerHTML = `<p class="p-2 text-slate-400">Loading...</p>`;
+        
+        if (side === 'left' && treeLeftInstance) treeLeftInstance.destroy();
+        if (side === 'right' && treeRightInstance) treeRightInstance.destroy();
+        
+        document.querySelector(treeElemSelector).innerHTML = "";
+
+        try {
+          const response = await fetch(`/tree/${year}/${month}`);
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const data = await response.json();
+
+          const commitDate = new Date(data.date).toLocaleDateString('en-CA');
+          const shortHash = data.commit_hash.substring(0, 7);
+          
+          metaElem.innerHTML = `
+              <span><strong>Date:</strong> ${commitDate}</span>
+              <span class="ml-2"><strong>Commit:</strong> <a href="${data.github_link}" target="_blank" class="text-blue-400 hover:underline">${shortHash}</a></span>
+          `;
+
+          const treeInstance = new mar10.Wunderbaum({
+            id: `tree-${side}-wunderbaum`, // Use a more unique ID for the instance
+            element: treeElemSelector,
+            source: data.tree,
+            iconMap: "fontawesome6",
+          });
+
+          if (side === 'left') treeLeftInstance = treeInstance;
+          if (side === 'right') treeRightInstance = treeRightInstance;
+
+        } catch (err) {
+          console.error(`Error loading ${side} tree:`, err);
+          metaElem.innerHTML = `<p class="p-2 text-red-400">Failed to load data.</p>`;
+        }
+      }
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const leftDate = leftDateInput.value;
+        const rightDate = rightDateInput.value;
+
+        if (leftDate && rightDate) {
+          updateTree("left", leftDate);
+          updateTree("right", rightDate);
+        }
+      });
+
+      document.addEventListener("DOMContentLoaded", () => {
+        // Trigger the initial comparison on page load
+        form.dispatchEvent(new Event('submit', { cancelable: true }));
+      });
+    </script>
+</body>
+</html>
